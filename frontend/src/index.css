@@ -1,0 +1,116 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root,
+html.dark {
+  color-scheme: dark;
+  --color-industrial-950: 7 10 16;     /* #070a10 */
+  --color-industrial-900: 11 15 23;    /* #0b0f17 */
+  --color-industrial-850: 16 22 35;    /* #101623 */
+  --color-industrial-800: 22 31 48;    /* #161f30 */
+  --color-industrial-700: 34 47 72;    /* #222f48 */
+  --color-industrial-600: 51 68 102;   /* #334466 */
+  --color-industrial-500: 72 97 142;   /* #48618e */
+}
+
+html.light {
+  color-scheme: light;
+  --color-industrial-950: 248 250 252; /* slate-50 #f8fafc */
+  --color-industrial-900: 255 255 255; /* white #ffffff */
+  --color-industrial-850: 241 245 249; /* slate-100 #f1f5f9 */
+  --color-industrial-800: 226 232 240; /* slate-200 #e2e8f0 */
+  --color-industrial-700: 203 213 225; /* slate-300 #cbd5e1 */
+  --color-industrial-600: 148 163 184; /* slate-400 #94a3b8 */
+  --color-industrial-500: 100 116 139; /* slate-500 #64748b */
+}
+
+body {
+  margin: 0;
+  background-color: rgb(var(--color-industrial-950));
+  color: #e2e8f0;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+html.light body {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+/* Light mode typography & contrast enhancements */
+html.light .text-white,
+html.light .text-slate-100,
+html.light .text-gray-100,
+html.light .text-gray-200 {
+  color: #0f172a;
+}
+
+html.light .text-gray-300 {
+  color: #334155;
+}
+
+html.light .text-gray-400 {
+  color: #64748b;
+}
+
+/* Protect buttons and badges with solid dark/colored backgrounds */
+html.light button.bg-rose-600,
+html.light button.bg-rose-500,
+html.light button.bg-cyan-600,
+html.light button.bg-cyan-500,
+html.light button.bg-emerald-600,
+html.light button.bg-emerald-500,
+html.light .bg-rose-600 span,
+html.light .bg-rose-600,
+html.light .bg-cyan-600,
+html.light .bg-emerald-600,
+html.light [data-preserve-color="true"] {
+  color: #ffffff !important;
+}
+
+/* Light mode card shadow & scrollbar */
+html.light .shadow-card-dark {
+  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.05);
+}
+
+/* Custom Scrollbar for sleek technical feel */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0b0f17;
+}
+::-webkit-scrollbar-thumb {
+  background: #222f48;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334466;
+}
+
+html.light ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+html.light ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Pulse animation utility */
+@keyframes subtle-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.02); }
+}
+
+.animate-subtle-pulse {
+  animation: subtle-pulse 3s infinite ease-in-out;
+}
