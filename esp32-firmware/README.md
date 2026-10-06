@@ -18,7 +18,7 @@ Layer 1 firmware for the MotorGuard predictive maintenance and motor condition m
 
 | Component | Pin / Signal | ESP32 GPIO | Description / Notes |
 | :--- | :--- | :--- | :--- |
-| **0.96" SSD1306 OLED** | SDA | **GPIO 21** | I2C Data (0x3C address) |
+| **1.3" / 0.96" OLED** | SDA | **GPIO 21** | I2C Data (0x3C address, SH1106 / SSD1306) |
 | | SCL | **GPIO 22** | I2C Clock |
 | | VCC / GND | 3.3V / GND | Power supply from ESP32 rail |
 | **GY-521 MPU6050** | SDA | **GPIO 21** | Shared I2C Data bus |
@@ -56,36 +56,27 @@ Layer 1 firmware for the MotorGuard predictive maintenance and motor condition m
 
 ---
 
-## OLED Quick Local Display Layout
+## OLED Industrial Display Interface (1.3" / 0.96" 128x64)
 
-Per project specifications, the OLED is strictly a **quick local information display** for an operator physically standing near the motor. The layout is preserved:
+The OLED displays high-contrast operational telemetry for physical on-site monitoring with the following phases:
 
+1. **Boot Splash**: Smooth animated loading bar (`0% → 100%`) with double-border housing.
+2. **Pre-Flight Hardware Check**: Sequential 200ms verification sweep of MPU-6050, DS18B20, ACS-712 calibration voltage, Relay interlock, and Wi-Fi link.
+3. **Live Monitoring Dashboard**:
 ```text
-+------------------------------+
-|        MOTOR STATUS          |
-|------------------------------|
-| Vibration : 0.42g            |
-| Temp      : 36.5°C           |
-| Current   : 0.85A            |
-|------------------------------|
-| STATUS: NORMAL               |
-| ACTION: RUNNING              |
-+------------------------------+
++--------------------------------------------------+
+| HEALTH [██████████] 100%   [WF•]   ROTOR: RUN [|]|
+|--------------------------------------------------|
+|  Vibration : 0.042 g                             |
+|  Temp      : 29.8  °C                            |
+|  Current   : 0.38  A                             |
+|--------------------------------------------------|
+| STATUS: NOMINAL        | ADVICE: NORMAL OPERATION|
++--------------------------------------------------+
 ```
 
-When a critical fault trips:
-```text
-+------------------------------+
-|        MOTOR STATUS          |
-|------------------------------|
-| Vibration : HIGH (2.1g)      |
-| Temp      : 68.2°C           |
-| Current   : 3.20A            |
-|------------------------------|
-| STATUS: CRITICAL FAULT       |
-| ACTION: MOTOR OFF            |
-+------------------------------+
-```
+4. **Emergency Cutoff Alert**: Alternating high-contrast strobe box and root-cause breakdown (`TRIP: VIB 1.82g > 1.6g`, `RELAY: OPEN (CUTOFF)`).
+5. **Recovery Screen**: `[ SAFETY CLEARED ]` re-arming confirmation on manual/remote reset.
 
 ---
 

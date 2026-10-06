@@ -32,7 +32,7 @@ The architecture enforces strict separation of concerns across three layers:
 │ LAYER 1 — ESP32 FIRMWARE                                               │
 │ • Sensor acquisition & oversampled filtering                           │
 │ • Autonomous local safety interlocks (Relay cutoff, LEDs, Buzzer)      │
-│ • Preserved 0.96" SSD1306 OLED local display (Quick physical status)   │
+│ • 1.3" / 0.96" OLED display (Pre-flight self-test & live telemetry)   │
 │ • Wi-Fi client with non-blocking reconnect & HTTP telemetry POST       │
 └────────────────────────────────────────────────────────────────────────┘
                          │ Wi-Fi (JSON Telemetry)
@@ -85,7 +85,7 @@ The architecture enforces strict separation of concerns across three layers:
 5. 12V DC geared motor
 6. L298N dual H-bridge motor driver
 7. 1-channel 5V relay module (Safety interlock)
-8. 0.96-inch SSD1306 I2C OLED display (0x3C)
+8. 1.3-inch SH1106 / 0.96-inch SSD1306 I2C OLED display (0x3C)
 9. 5V active buzzer
 10. Red LED (Critical fault indicator)
 11. Yellow LED (Warning / anomaly indicator)
@@ -103,7 +103,7 @@ The architecture enforces strict separation of concerns across three layers:
 
 | Component | Pin | ESP32 GPIO | Electrical Connection Notes |
 | :--- | :--- | :--- | :--- |
-| **0.96" SSD1306 OLED** | SDA / SCL | **GPIO 21 / 22** | Shared hardware I2C bus (Address `0x3C`) |
+| **1.3" / 0.96" OLED** | SDA / SCL | **GPIO 21 / 22** | Shared hardware I2C bus (Address `0x3C`, SH1106 / SSD1306) |
 | **GY-521 MPU6050** | SDA / SCL | **GPIO 21 / 22** | Shared hardware I2C bus (Address `0x68`) |
 | **DS18B20 Temp Probe** | DATA | **GPIO 4** | OneWire bus (Needs 4.7kΩ pull-up resistor to 3.3V) |
 | **ACS712 20A Current** | VOUT | **GPIO 34** | ADC1_CH6 (Analog input). 5V module supply. |

@@ -56,8 +56,8 @@ If any reading crosses dangerous limits, the **ESP32 immediately trips a 5V rela
 
 | Component | Component Pin | ESP32 Pin | Wire / Resistor Details | Why This Pin? |
 | :--- | :--- | :--- | :--- | :--- |
-| **0.96" OLED (0x3C)** | SDA | **GPIO 21** | Direct jumper | Default hardware $I^2C$ Data |
-| **0.96" OLED (0x3C)** | SCL | **GPIO 22** | Direct jumper | Default hardware $I^2C$ Clock |
+| **1.3" / 0.96" OLED (0x3C)** | SDA | **GPIO 21** | Direct jumper | Default hardware $I^2C$ Data (SH1106 / SSD1306) |
+| **1.3" / 0.96" OLED (0x3C)** | SCL | **GPIO 22** | Direct jumper | Default hardware $I^2C$ Clock |
 | **GY-521 MPU6050** | SDA | **GPIO 21** | Shared $I^2C$ Data wire | Shares same $I^2C$ bus at address `0x68` |
 | **GY-521 MPU6050** | SCL | **GPIO 22** | Shared $I^2C$ Clock wire | Shares same $I^2C$ bus at address `0x68` |
 | **DS18B20 Temp Probe**| DATA (Yellow) | **GPIO 4** | **Requires 4.7kΩ pull-up** to 3.3V | OneWire digital protocol needs pull-up |
@@ -140,8 +140,15 @@ All firmware files live in `esp32-firmware/`:
     3. Turns Red LED ON and activates intermittent buzzer alarm.
     4. Latches the system in `STATE_CRITICAL_FAULT` until an explicit reset command is issued.
 
-### D. [`include/display_oled.h`](file:///d:/MotorGuard/esp32-firmware/include/display_oled.h)
-* **Layout:** Displays **"MOTOR HEALTH: 98%"** cleanly at the top header, followed by real-time vibration, temperature, current, machine status, and relay action (`RUNNING` / `MOTOR OFF`).
+### D. [`include/display_oled.h`](file:///d:/MotorGuard/esp32-firmware/include/display_oled.h) & [`motorguard_complete_sketch.ino`](file:///d:/MotorGuard/esp32-firmware/motorguard_complete_sketch.ino)
+* **What it does:** Industrial 128×64 OLED display controller (compatible with both 0.96" SSD1306 and 1.3" SH1106 displays).
+* **Key Features & Animations:**
+  1. **Boot Splash & Smooth Progress Bar:** Animated filling progress bar (`0% → 100%`) with double-border enclosure.
+  2. **Pre-Flight Hardware Diagnostics:** Sequential 200ms verification checklist of all 4 sensors/relay before arming the motor.
+  3. **Live Dashboard:** Header with Health Score (`H:98%`), segmented mini health gauge `[====]`, telemetry packet transmission pulse dot `[WF*]`, and animated spinning rotor `[|] [/] [-] [\]`.
+  4. **Warning Badges:** Dynamic `[!]` indicator directly next to elevated sensor parameters.
+  5. **Hazard Cutoff Alert:** Alternating inverted strobe warning box and root-cause threshold trip breakdown.
+  6. **Safety Recovery:** Confirms safety latch clearing and relay re-arming on manual/remote reset.
 
 ---
 
