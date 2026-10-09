@@ -65,16 +65,13 @@
 #define PIN_ACS712_ADC      34
 
 // Actuators & Indicators
-#define PIN_RELAY           23   // Safety Relay: isolates 7.4V battery to motor driver
+#define PIN_RELAY           23   // Safety Relay: directly switches motor power ON/OFF
 #define PIN_BUZZER          18   // 5V Active Buzzer
 #define PIN_LED_RED         25   // Critical Fault indicator (220Ω resistor)
 #define PIN_LED_YELLOW      26   // Warning indicator (220Ω resistor)
 #define PIN_LED_GREEN       27   // Normal Run indicator (220Ω resistor)
 
-// L298N Motor Driver Control Pins
-#define PIN_MOTOR_IN1       16
-#define PIN_MOTOR_IN2       17
-#define PIN_MOTOR_ENA       14   // Motor Enable / PWM
+// Note: Motor driver (L298N) is NOT used. The relay switches motor power directly.
 
 // Relay Trigger Logic (Active-LOW for most 5V relay modules)
 #define RELAY_ACTIVE_LEVEL   LOW
@@ -110,21 +107,11 @@
 #define SCREEN_HEIGHT 64
 
 // DISPLAY SELECTION:
+// Set to 0 for 0.96" OLED (SSD1306 controller - most common default)
 // Set to 1 for 1.3" OLED (SH1106 controller - Requires "Adafruit SH110X" library)
-// Set to 0 for 0.96" OLED (SSD1306 controller - Requires "Adafruit SSD1306" library)
-#define USE_1_3_INCH_SH1106 1
+#define USE_1_3_INCH_SH1106 0
 
-#if USE_1_3_INCH_SH1106 && defined(__has_include)
-  #if __has_include(<Adafruit_SH110X.h>)
-    #define OLED_DRIVER_SH1106 1
-  #else
-    #define OLED_DRIVER_SH1106 0
-  #endif
-#else
-  #define OLED_DRIVER_SH1106 USE_1_3_INCH_SH1106
-#endif
-
-#if OLED_DRIVER_SH1106
+#if USE_1_3_INCH_SH1106
 #include <Adafruit_SH110X.h>
 Adafruit_SH1106G oled = Adafruit_SH1106G(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 #define OLED_COLOR_WHITE SH110X_WHITE
@@ -135,6 +122,20 @@ Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 #define OLED_COLOR_WHITE SSD1306_WHITE
 #define OLED_COLOR_BLACK SSD1306_BLACK
 #endif
+
+// ==============================================================================
+// GLOBAL SYSTEM STATE & VARIABLES
+// ==============================================================================
+enum HealthState { STATE_NORMAL, STATE_WARNING, STATE_CRITICAL_FAULT };
+HealthState current_state = STATE_NORMAL;
+bool emergency_latched = false;
+bool relay_active = true;
+float acs_zero_voltage = ACS712_ZERO_VOLTS;
+
+unsigned long last_telemetry_time = 0;
+unsigned long last_display_time = 0;
+unsigned long last_buzzer_toggle = 0;
+bool buzzer_state = false;
 
 // Rotor animation frames: '|', '/', '-', '\'
 const char ROTOR_FRAMES[] = {'|', '/', '-', '\\'};
@@ -252,9 +253,8 @@ void showDiagnosticStep(int step_index, float vib_val, float temp_val, float cur
     oled.setCursor(2, 55);
     if (step_index >= 5) {
         if (wifi_ok) {
-            oled.print(F("WiFi: OK ("));
+            oled.print(F("WiFi: "));
             oled.print(ip.toString().c_str());
-            oled.print(F(")"));
         } else {
             oled.print(F("NET : Standalone Ready"));
         }
@@ -450,16 +450,6 @@ void updateOLED(float vib, float temp, float curr, const char* status_str, const
 OneWire oneWire(PIN_ONE_WIRE_BUS);
 DallasTemperature ds18b20(&oneWire);
 
-float acs_zero_voltage = ACS712_ZERO_VOLTS;
-bool emergency_latched = false;
-bool relay_active = true;
-enum HealthState { STATE_NORMAL, STATE_WARNING, STATE_CRITICAL_FAULT } current_state = STATE_NORMAL;
-
-unsigned long last_telemetry_time = 0;
-unsigned long last_display_time = 0;
-unsigned long last_buzzer_toggle = 0;
-bool buzzer_state = false;
-
 // Calibration for ACS712 Current Sensor
 void calibrateACS712() {
     long sum = 0;
@@ -493,8 +483,13 @@ void readSensors(float &temp, float &curr, float &vib) {
     }
     float adc_avg = (float)adc_sum / (float)ACS712_SAMPLES_COUNT;
     float measured_v = (adc_avg / ADC_RESOLUTION) * ADC_MAX_VOLTAGE;
-    curr = fabs(measured_v - acs_zero_voltage) / ACS712_SENSITIVITY;
-    if (curr < 0.08f) curr = 0.0f; // noise gate
+    // Benchtop guard: If sensor is unpowered (<0.4V), prevent false 25A current reading
+    if (measured_v < 0.40f) {
+        curr = 0.0f; 
+    } else {
+        curr = fabs(measured_v - acs_zero_voltage) / ACS712_SENSITIVITY;
+        if (curr < 0.08f) curr = 0.0f; // noise gate
+    }
 
     // 3. Vibration (MPU6050 dynamic acceleration with bus lockup guard)
     Wire.beginTransmission(MPU6050_ADDR);
@@ -526,7 +521,6 @@ void setRelay(bool activate) {
     if (emergency_latched && activate) return;
     relay_active = activate;
     digitalWrite(PIN_RELAY, activate ? RELAY_ACTIVE_LEVEL : RELAY_INACTIVE_LEVEL);
-    digitalWrite(PIN_MOTOR_ENA, activate ? HIGH : LOW);
 }
 
 void tripEmergencyStop(const char* reason) {
@@ -647,30 +641,31 @@ void setup() {
     Serial.println(F("Power: 2S Li-ion Battery (7.4V nominal)"));
     Serial.println(F("=========================================="));
 
-    // 1. Pins Setup - Start with motor and relay DE-ENERGIZED for safe zero-calibration
+    // 1. Pins Setup - Start with relay DE-ENERGIZED for safe zero-calibration
     pinMode(PIN_RELAY, OUTPUT);
     pinMode(PIN_BUZZER, OUTPUT);
     pinMode(PIN_LED_RED, OUTPUT);
     pinMode(PIN_LED_YELLOW, OUTPUT);
     pinMode(PIN_LED_GREEN, OUTPUT);
-    pinMode(PIN_MOTOR_IN1, OUTPUT);
-    pinMode(PIN_MOTOR_IN2, OUTPUT);
-    pinMode(PIN_MOTOR_ENA, OUTPUT);
 
-    // Motor driver initial state: Disabled during boot/calibration
-    digitalWrite(PIN_MOTOR_IN1, LOW);
-    digitalWrite(PIN_MOTOR_IN2, LOW);
-    digitalWrite(PIN_MOTOR_ENA, LOW);
+    // Initial hardware self-test: blink all 3 LEDs sequentially (instant visual feedback)
+    digitalWrite(PIN_LED_GREEN, HIGH); delay(200); digitalWrite(PIN_LED_GREEN, LOW);
+    digitalWrite(PIN_LED_YELLOW, HIGH); delay(200); digitalWrite(PIN_LED_YELLOW, LOW);
+    digitalWrite(PIN_LED_RED, HIGH); delay(200); digitalWrite(PIN_LED_RED, LOW);
+
     setRelay(false);
     setLEDs(false, true, false); // Yellow: Booting & Calibrating
 
     // 2. Initialize OLED Display & Show Animated Boot Splash
     Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
+    Wire.setTimeOut(100); // 100ms timeout guard to prevent I2C bus hanging
     bool oled_ok = false;
-#if OLED_DRIVER_SH1106
+#if USE_1_3_INCH_SH1106
     oled_ok = oled.begin(0x3C, true);
+    if (!oled_ok) oled_ok = oled.begin(0x3D, true);
 #else
     oled_ok = oled.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+    if (!oled_ok) oled_ok = oled.begin(SSD1306_SWITCHCAPVCC, 0x3D);
 #endif
 
     if (!oled_ok) {
@@ -732,12 +727,10 @@ void setup() {
     showDiagnosticStep(5, init_v, init_t, acs_zero_voltage, wifi_ok, WiFi.localIP());
     delay(1000); // 1-second display for viva evaluators to admire the checklist
 
-    // 5. System Ready: Energize Safety Relay and Enable Motor Forward Drive
-    digitalWrite(PIN_MOTOR_IN1, HIGH);
-    digitalWrite(PIN_MOTOR_IN2, LOW);
+    // 5. System Ready: Energize Safety Relay to power the Motor
     setRelay(true);
     setLEDs(true, false, false); // Green: Normal Running
-    Serial.println(F("[SYSTEM READY] Motor energized, entering live monitoring."));
+    Serial.println(F("[SYSTEM READY] Relay energized (Motor powered), entering live monitoring."));
 
     Serial.println(F("\n=========================================="));
     Serial.println(F("COMMANDS AVAILABLE IN SERIAL MONITOR:"));

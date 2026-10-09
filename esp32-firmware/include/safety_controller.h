@@ -33,16 +33,13 @@ public:
         pinMode(PIN_LED_YELLOW, OUTPUT);
         pinMode(PIN_LED_GREEN, OUTPUT);
 
-        pinMode(PIN_MOTOR_IN1, OUTPUT);
-        pinMode(PIN_MOTOR_IN2, OUTPUT);
-        pinMode(PIN_MOTOR_ENA, OUTPUT);
+        // Hardware LED test on boot
+        digitalWrite(PIN_LED_GREEN, HIGH); delay(200); digitalWrite(PIN_LED_GREEN, LOW);
+        digitalWrite(PIN_LED_YELLOW, HIGH); delay(200); digitalWrite(PIN_LED_YELLOW, LOW);
+        digitalWrite(PIN_LED_RED, HIGH); delay(200); digitalWrite(PIN_LED_RED, LOW);
 
-        // Initial default: Relay active, motor enabled in forward direction
+        // Initial default: Relay active (motor powered directly)
         setRelay(true);
-        digitalWrite(PIN_MOTOR_IN1, HIGH);
-        digitalWrite(PIN_MOTOR_IN2, LOW);
-        digitalWrite(PIN_MOTOR_ENA, HIGH);
-
         setLEDs(true, false, false); // Green ON
         digitalWrite(PIN_BUZZER, LOW);
     }
@@ -60,11 +57,6 @@ public:
         }
         relay_active = activate;
         digitalWrite(PIN_RELAY, activate ? RELAY_ACTIVE_LEVEL : RELAY_INACTIVE_LEVEL);
-        if (!activate) {
-            digitalWrite(PIN_MOTOR_ENA, LOW); // Cut motor driver enable
-        } else {
-            digitalWrite(PIN_MOTOR_ENA, HIGH);
-        }
     }
 
     void tripEmergencyStop(const char* reason = "Critical Fault") {

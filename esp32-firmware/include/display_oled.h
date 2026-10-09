@@ -27,7 +27,11 @@ public:
                     last_hazard_flash(0), hazard_invert_state(false) {}
 
     bool begin() {
-        if (display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS)) {
+        if (display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+            is_initialized = true;
+            return true;
+        }
+        if (display.begin(SSD1306_SWITCHCAPVCC, 0x3D)) {
             is_initialized = true;
             return true;
         }
